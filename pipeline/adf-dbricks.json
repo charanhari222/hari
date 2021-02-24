@@ -1,0 +1,151 @@
+{
+	"name": "adf-dbricks",
+	"properties": {
+		"description": "To create integration between data factory and databricks",
+		"activities": [
+			{
+				"name": "availability",
+				"type": "Validation",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DelimitedText1",
+						"type": "DatasetReference"
+					},
+					"timeout": "7.00:00:00",
+					"sleep": 10
+				}
+			},
+			{
+				"name": "Copyofourblob",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "availability",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"wildcardFileName": "*",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "Inputblob",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "outputblobstorage",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "Databricks",
+				"type": "DatabricksNotebook",
+				"dependsOn": [
+					{
+						"activity": "Copyofourblob",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"notebookPath": "/Transformations",
+					"baseParameters": {
+						"input": {
+							"value": "@pipeline().parameters.inputPath",
+							"type": "Expression"
+						},
+						"output": {
+							"value": "@pipeline().parameters.outputPath",
+							"type": "Expression"
+						},
+						"filename": {
+							"value": "@pipeline().parameters.fileName",
+							"type": "Expression"
+						},
+						"pipelineRunID": {
+							"value": "@pipeline().RunID",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "haridbricks2",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"inputPath": {
+				"type": "string",
+				"defaultValue": "/staged_sink"
+			},
+			"outputPath": {
+				"type": "string",
+				"defaultValue": "/processed_sink"
+			},
+			"filename": {
+				"type": "string",
+				"defaultValue": "Product.csv"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2021-02-24T16:24:48Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
